@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+
+
+__pycache__
+.vscode
+.idea
+git_ignore
+.qt_for_python
