@@ -1,12 +1,14 @@
 import sys
 import cv2
+from importlib_metadata import re
 import numpy as np
 from PIL import Image
 from scipy.ndimage.measurements import label,find_objects,center_of_mass
 import math
 import os
+from sklearn.metrics import top_k_accuracy_score
 from tqdm import tqdm,trange
-sys.setrecursionlimit(10000000) #例如这里设置为一百万 
+# sys.setrecursionlimit(10000000) #例如这里设置为一百万 
 
 
 
@@ -94,48 +96,9 @@ def compare_area(contours_list,m,n,now_img_id):
     else:
         return 1
 
-def func_1(now_img_id,K):
-    print(now_img_id)
-    if now_img_id == 70:
-        print("here")
-    if now_img_id > total_img_num:
-        print("#=========================================================#")
-        print("                   A L L   C O M P L E T E D !             ")
-        print("#=========================================================#")
-    else:
-        # now_img_id : 1,2,3,4,5,6...
-        M = len(contours_list[now_img_id - 1])  # now_img_id张图片中的边界矩阵数
-        N = len(contours_list[now_img_id - 2])  # now_img_id - 1张图片中的边界矩阵数
-        m = 1
-        n = 1
-        func_2(M,N,m,n,now_img_id,K)
-    
-def func_2(M,N,m,n,now_img_id,K):
-    if m > M:
-        now_img_id = now_img_id + 1
-        func_1(now_img_id,K)
-    else:
-        func_3(M,N,m,n,now_img_id,K) 
-    
-def func_3(M,N,m,n,now_img_id,K):
-    if n > N:
-        K           = K + 1
-        # 找到新砾石，新建一个字典
-        rock_dict = {}
-        rock_dict['id'] = K
-        rock_dict['contours'] = []
-        # FIXME:  m? n ?
-        rock_dict['contours'].append(contours_list[now_img_id - 1][m - 1])
-        rock_dict['z_coordinates'] = []
-        rock_dict['z_coordinates'].append(now_img_id - 1)
-        ALL_ROCKS_LIST.append(rock_dict)
-        
-        m           = m + 1
-        func_2(M,N,m,n,now_img_id,K)
-    else:
-        func_4(M,N,m,n,now_img_id,K)
-    
-def func_4(M,N,m,n,now_img_id,K):
+           
+             
+def IsSameRock(m,n,now_img_id):
     """
     两边界矩阵属于同一个砾石，给予相同的砾石编号
     """
@@ -146,22 +109,13 @@ def func_4(M,N,m,n,now_img_id,K):
     else:
         flag    = is_central_points_on_polygons(contours_list[now_img_id - 2][n - 1],
                                                 central_points_list[now_img_id - 1][m - 1])
-    if flag     == False:
-        n       = n + 1
-        func_3(M,N,m,n,now_img_id,K)
-    else:
-        # FIXME:找到第now_img_id - 1 张中第n个砾石在ALL_ROCKS_LIST中的位置
-        ALL_ROCKS_LIST[n - 1]['contours'].append(contours_list[now_img_id - 1][m - 1])
-        ALL_ROCKS_LIST[n - 1]['z_coordinates'].append(now_img_id - 1)
-        m       = m + 1
-        func_2(M,N,m,n,now_img_id,K)   
-    
-    
+    return flag      
 
 if __name__ == "__main__":
-    
     # 砾石CT切片图像的存放路径
-    rocks_img_path = r"E:\\My Projects\\rocks_view\\git_ignore\\test\\test_modeling_final"# 
+    #rocks_img_path = r"E:\\My Projects\\rocks_view\\git_ignore\\test\\test_modeling_final"# 
+    rocks_img_path = r"E:\\My Projects\\rocks_view\\git_ignore\\test\\total_result-01-18"# 
+
     rocks_images_name = os.listdir(rocks_img_path) 
     
     # print(rocks_images_name)
@@ -197,6 +151,10 @@ if __name__ == "__main__":
 
     global ALL_ROCKS_LIST
     ALL_ROCKS_LIST = []
+    #  用一个列表记录前一张图片中各个边界矩阵在ALL_ROCKS_LIST中的位置
+    global PRE_IMG_ROCK_ID
+    PRE_IMG_ROCK_ID = np.empty((3000,),int)
+
     # !使用for循环创建字典，必须在循环内先构造一个空字典，否则每次循环都是对同一个对象字典进行操作，用同一块内存空间
     for i in range(K):
         rock_dict = {}
@@ -206,6 +164,61 @@ if __name__ == "__main__":
         rock_dict['z_coordinates'] = []  # 砾石的Z轴坐标
         rock_dict['z_coordinates'].append(0)  # 第一张图像的Z = 0
         ALL_ROCKS_LIST.append(rock_dict)
+        PRE_IMG_ROCK_ID[i] = i + 1
+
+    # isAddRock = False
+    while(now_img_id <= total_img_num):
+        M = len(contours_list[now_img_id - 1])  # now_img_id张图片中的边界矩阵数
+        N = len(contours_list[now_img_id - 2])  # now_img_id - 1张图片中的边界矩阵数
+        m = 1  # 计数
+        n = 1
         
-    func_1(now_img_id,K)
+        while(m <= M):
+            while(n <= N):
+                flag = IsSameRock(m,n,now_img_id)  # 两边界是否为同一个砾石
+                if flag:  # 属于同一砾石
+                    # TODO：属于同一砾石，重组
+                    # FIXME:找到第now_img_id - 1 张中第n个砾石在ALL_ROCKS_LIST中的位置
+                    pre_index = PRE_IMG_ROCK_ID[n-1]
+                    ALL_ROCKS_LIST[pre_index - 1]['contours'].append(contours_list[now_img_id - 1][m - 1])
+                    ALL_ROCKS_LIST[pre_index - 1]['z_coordinates'].append(now_img_id - 1)
+                    PRE_IMG_ROCK_ID[m - 1] = pre_index - 1  # 当前图像的第m个边界属于的砾石id
+                    #K-=1  # 属于同一砾石不需要K+1，但是为了避免后续K+=1时特殊处理，在这里先K-1
+                    #isAddRock = False
+                    break
+                else:  # 两边界不属于同一砾石
+                    n+=1  # 继续遍历前一张图像的下一个边界
+            # while(n <= N)上一张图像的所有砾石已经找完，说明当前这张图像的剩余边界矩阵（若有）均为新砾石
+            if n > N:   # 用于解决是因为n>N还是因为找到两个边界属于同一个砾石而结束循环
+                # isAddRock = True
+            
+                K+=1  # 找到新砾石
+                # TODO:添加新砾石K
+                rock_dict = {}
+                rock_dict['id'] = K
+                rock_dict['contours'] = []
+                rock_dict['contours'].append(contours_list[now_img_id - 1][m - 1])
+                rock_dict['z_coordinates'] = []
+                rock_dict['z_coordinates'].append(now_img_id - 1)
+                ALL_ROCKS_LIST.append(rock_dict)
+                PRE_IMG_ROCK_ID[m - 1] = K  # 
+            m+=1  # 处理当前图像的下一个边界
+            #
+        now_img_id+=1  # while(m <= M)  #  当前图像的砾石已经找完，处理下一张
+
+    print("Successful!")  # while(now_img_id <= total_img_num):
     
+    ALL_ROCKS_COORDINATES = []
+    for i in range(K):  # 每个砾石
+        x = []
+        y = []
+        z = []
+        for j in range(len(ALL_ROCKS_LIST[i]['contours'])):
+            for k in range(len(ALL_ROCKS_LIST[i]['contours'][j])):
+                x.append(ALL_ROCKS_LIST[i]['contours'][j][k][0][0])  # x
+                y.append(ALL_ROCKS_LIST[i]['contours'][j][k][0][1])  # y
+                z.append(ALL_ROCKS_LIST[i]['z_coordinates'][j])   # z
+        contours = np.array([np.array(x),np.array(y),np.array(z)])
+        ALL_ROCKS_COORDINATES.append(contours)
+        
+    print(ALL_ROCKS_COORDINATES)

@@ -396,13 +396,13 @@ class Ui_MainWindow(object):
 
     def Action_VisualModel(self, MainWindow):
         """三维重建"""
-        try:
-            self.VisualModelWidget = VisualModelWidget(
-                MainWindow, self)  # 创建一个子窗口
-            self.VisualModelWidget.show()
-            self.VisualModelWidget.Visual()
-        except:
-            self.statusbar.showMessage("三维重建失败！")
+        """try:"""
+        self.VisualModelWidget = VisualModelWidget(
+            MainWindow, self)  # 创建一个子窗口
+        self.VisualModelWidget.show()
+        self.VisualModelWidget.Visual()
+        """except:
+            self.statusbar.showMessage("三维重建失败！")"""
 
     def Action_ResetImage(self):
         """重置当前图像"""
