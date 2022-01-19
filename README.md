@@ -3,6 +3,7 @@
 #### TODO：
 
 - **数据集标注**
+- **砾石分组精度问题！**
 - **在U-Net中增加注意力机制**
 - **使用神经网络模型进行预测100+张图像时，界面卡顿（多线程）**
 - **目前使用的是PyqtGraph科学计算可视化库，计划使用VTK。但是VTK的配置问题困扰许久。**
@@ -44,11 +45,14 @@ mayavi==4.7.4
 tqdm==4.42.1
 pandas==1.1.5
 opencv_python_headless==4.5.3.56
+opencv-python==4.1.2.30
 torchvision==0.7.0+cpu
 matplotlib==3.1.2
 Pillow==9.0.0
 PyQt5==5.15.6
 ```
+
+**注意：若有Intel独显请配置好对应的GPU版本PyTorch！**
 
 主目录下：
 
@@ -86,4 +90,4 @@ https://github.com/JlexZhong/CTRockImages3DReconstruc/releases
 
 效果：
 
-<img src="README.assets/image-20220118193517921.png" alt="image-20220118193517921" style="zoom: 50%;" />
+![img](README.assets/MZBV1[57C7R4BVYPGGGM7W9.png)

@@ -8,9 +8,9 @@ from pandas import array
 from PIL import ImageQt
 from PyQt5.QtWidgets import *
 from pyqtgraph.Qt import QtCore, QtGui
-
+from PyQt5.QtGui import QStandardItemModel, QStandardItem, QCursor, QIcon
 from palette import ReviseForm
-
+from PyQt5.QtCore import Qt
 
 class VisualModelWidget(QDialog):
     def __init__(self, parent, MainUi):
@@ -21,18 +21,69 @@ class VisualModelWidget(QDialog):
         self.resize(1000, 800)
         # 显示点云的组件
         self.w = gl.GLViewWidget(self)
-        self.w.opts['distance'] = 120  # 视图距离
-        # 按钮
-        self.pushButton_save = QPushButton(self)
-        self.pushButton_save.setText("输出vtk文件")
-        # self.pushButton.clicked.connect(self.showImage)
+        self.w.opts['distance'] = 130  # 视图距离
+        # 右侧ID框
+        self.Widget_ID = QWidget(self)
+        self.Widget_ID.setMaximumWidth(200)
         # 布局
-        self.verticalLayout = QVBoxLayout(self)
-        self.verticalLayout.addWidget(self.w)
-        self.verticalLayout.addWidget(self.pushButton_save)
+        self.HLayout = QHBoxLayout(self)
+        self.HLayout.addWidget(self.w)
+        self.HLayout.addWidget(self.Widget_ID)
         # 设置窗口布局
-        self.setLayout(self.verticalLayout)
+        self.setLayout(self.HLayout)
+        # ID框的布局
+        self.Layout_ID = QVBoxLayout(self.Widget_ID)
+        self.View_ID = QTableView(self.Widget_ID)
+        self.pushbutton_all_select = QPushButton(self.Widget_ID)
+        self.pushbutton_all_select.setText("全选")
+        self.pushbutton_all_unselect = QPushButton(self.Widget_ID)
+        self.pushbutton_all_unselect.setText("全不选")
+        self.pushbutton_3D_Modeling = QPushButton(self.Widget_ID)
+        self.pushbutton_3D_Modeling.setText("三维重建")
+        self.Layout_ID.addWidget(self.View_ID)
+        self.Layout_ID.addWidget(self.pushbutton_all_select)
+        self.Layout_ID.addWidget(self.pushbutton_all_unselect)
+        self.Layout_ID.addWidget(self.pushbutton_3D_Modeling)
+        # View_ID
+        self.View_ID.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # add action
+        self.pushbutton_all_select.clicked.connect(self.Action_all_select)
+        self.pushbutton_all_unselect.clicked.connect(self.Action_all_unselect)
+        self.pushbutton_3D_Modeling.clicked.connect(self.Action_Visual_in_Dialog)
 
+    def createModel(self, parent):
+        """
+
+        创建模型
+        :param parent:
+        :return:
+        """
+        model = QStandardItemModel(0, 3, parent)
+        model.setHorizontalHeaderLabels(['', 'ID', '切片数'])
+        return model
+
+    def CreateViewID(self):
+        """关键Id选择框"""
+        model = self.createModel(self.View_ID)
+        row = 0  # 行数，等于文件数
+        self.lst_id_checkBox = []  # 存放复选框变量
+        for id in range(len(ALL_ROCKS_LIST)):  # 初始化模型model数据，插入文件名
+            model.insertRow(row)
+            model.setData(model.index(row, 1), id + 1)
+            model.setData(model.index(row, 2),len(ALL_ROCKS_LIST[id]['z_coordinates']))
+            row = row + 1
+        for i in range(row):
+            item_checked = QStandardItem()
+            item_checked.setCheckState(Qt.Checked)
+            item_checked.setCheckable(True)
+            model.setItem(i, 0, item_checked)
+            self.lst_id_checkBox.append(item_checked)  # 添加到列表中
+        self.View_ID.setModel(model)
+        self.View_ID.setColumnWidth(0, 20)
+        self.View_ID.setColumnWidth(1, 50)
+        self.View_ID.setColumnWidth(2, 50)
+        
+        
     def GetAllImages(self):
         self.imgs = []
         # 将pixmap 转换成Image
@@ -161,6 +212,7 @@ class VisualModelWidget(QDialog):
             now_img_id+=1  # while(m <= M)  #  当前图像的砾石已经找完，处理下一张
 
         print("Successful!")  # while(now_img_id <= total_img_num):
+        global ALL_ROCKS_COORDINATES
         ALL_ROCKS_COORDINATES = []
         for i in range(K):  # 每个砾石
             x = []
@@ -173,7 +225,9 @@ class VisualModelWidget(QDialog):
                     z.append((ALL_ROCKS_LIST[i]['z_coordinates'][j] * 0.60))   # z
             contours = np.array([np.array(x),np.array(y),np.array(z)])
             ALL_ROCKS_COORDINATES.append(contours)
-
+        self.scatter_plot()
+        
+    def scatter_plot(self):
         
         x = []
         y = []
@@ -192,8 +246,8 @@ class VisualModelWidget(QDialog):
             self.pos[i] = (x[i], y[i], z[i])
         self.pos = np.array(self.pos)
         colors = np.array(colors)
-        sp1 = gl.GLScatterPlotItem(pos=self.pos, color=colors, size=0.4, pxMode=False)
-        self.w.addItem(sp1)
+        self.sp1 = gl.GLScatterPlotItem(pos=self.pos, color=colors, size=0.4, pxMode=False)
+        self.w.addItem(self.sp1)
         # 显示坐标轴
         axex_x = gl.GLLinePlotItem(pos=np.asarray(
             [[0, 0, 0], [80, 0, 0]]), color=(1, 0, 0, 1), width=0.1)
@@ -206,10 +260,59 @@ class VisualModelWidget(QDialog):
         self.w.addItem(axex_z)
 
         self.w.show()
+        self.CreateViewID()
 
+    def Action_all_select(self):
+        """全选"""
+        for i in range(len(self.lst_id_checkBox)):
+            self.lst_id_checkBox[i].setCheckState(Qt.Checked)
+
+    def Action_all_unselect(self):
+        """全不选"""
+        for i in range(len(self.lst_id_checkBox)):
+            self.lst_id_checkBox[i].setCheckState(Qt.Unchecked)
+
+
+    def Get_select_ids(self):
+        """获取选择的id"""
+        list_selected_ID = []
+        for i in range(len(self.lst_id_checkBox)):
+            if (self.lst_id_checkBox[i].checkState() == Qt.Checked):
+                list_selected_ID.append(i + 1)
+        return list_selected_ID
+
+
+    def Action_Visual_in_Dialog(self):
+        """三维重建按钮的触发事件"""
+        list_selected_ID = self.Get_select_ids()
+        x = []
+        y = []
+        z = []
+        colors = []
+        for id in list_selected_ID:
+            i = id -1
+            color = get_random_color()
+            for j in range(len(ALL_ROCKS_COORDINATES[i][0])):
+                x.append(ALL_ROCKS_COORDINATES[i][0][j])
+                y.append(ALL_ROCKS_COORDINATES[i][1][j])
+                z.append(ALL_ROCKS_COORDINATES[i][2][j])
+                colors.append(color)
+                
+        self.pos = np.empty((len(x), 3))
+        for i in range(len(x)):
+            self.pos[i] = (x[i], y[i], z[i])
+        self.pos = np.array(self.pos)
+        colors = np.array(colors)
+        self.w.removeItem(self.sp1)
+        self.sp1 = gl.GLScatterPlotItem(pos=self.pos, color=colors, size=0.4, pxMode=False)
+        self.w.addItem(self.sp1)
+        
+
+        self.w.show()
 
 
 def get_random_color():
+    """获取一个随机的颜色"""
     #random.uniform(0, 100)
     r = lambda: random.uniform(0,1)
     return [r(),r(),r(),1]
@@ -273,11 +376,13 @@ def is_central_points_on_polygons(contour,central_points):
     # cv2.pointPolygonTest只接受元组
     central_points_1_xy     = (central_points[0][0],central_points[0][1])
     central_points_2_xy     = (central_points[1][0],central_points[1][1])
-    flag_point1             = cv2.pointPolygonTest(contour,
-                                                   central_points_1_xy, False)
-    flag_point2             = cv2.pointPolygonTest(contour,
-                                                   central_points_2_xy, False)
-    if (flag_point1 == 1 or flag_point2 == 1) :      
+    distance_point1             = cv2.pointPolygonTest(contour,
+                                                   central_points_1_xy, True)
+    distance_point2             = cv2.pointPolygonTest(contour,
+                                                   central_points_2_xy, True)
+    if ((distance_point2 or distance_point1) >= 0) :      
+        return True
+    elif (-10 <= (distance_point1 and distance_point2) < 0 ):
         return True
     else:
         return False
