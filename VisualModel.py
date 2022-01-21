@@ -1,3 +1,4 @@
+from ast import Return
 import math
 import sys
 import random
@@ -11,6 +12,7 @@ from pyqtgraph.Qt import QtCore, QtGui
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QCursor, QIcon
 from palette import ReviseForm
 from PyQt5.QtCore import Qt
+from matplotlib.path import Path
 
 class VisualModelWidget(QDialog):
     def __init__(self, parent, MainUi):
@@ -158,8 +160,8 @@ class VisualModelWidget(QDialog):
         ALL_ROCKS_LIST = []
         #  用一个列表记录前一张图片中各个边界矩阵在ALL_ROCKS_LIST中的位置
         global PRE_IMG_ROCK_ID
-        PRE_IMG_ROCK_ID = np.empty((3000,),int)
-
+        PRE_IMG_ROCK_ID = []
+        NOW_IMG_ROCK_ID = []
         # !使用for循环创建字典，必须在循环内先构造一个空字典，否则每次循环都是对同一个对象字典进行操作，用同一块内存空间
         for i in range(K):
             rock_dict = {}
@@ -169,7 +171,7 @@ class VisualModelWidget(QDialog):
             rock_dict['z_coordinates'] = []  # 砾石的Z轴坐标
             rock_dict['z_coordinates'].append(0)  # 第一张图像的Z = 0
             ALL_ROCKS_LIST.append(rock_dict)
-            PRE_IMG_ROCK_ID[i] = i + 1
+            PRE_IMG_ROCK_ID.append(i + 1)
 
         # isAddRock = False
         while(now_img_id <= total_img_num):
@@ -179,15 +181,17 @@ class VisualModelWidget(QDialog):
             n = 1
             
             while(m <= M):
+                n = 1
                 while(n <= N):
                     flag = IsSameRock(m,n,now_img_id,self.contours_list,central_points_list)  # 两边界是否为同一个砾石
                     if flag:  # 属于同一砾石
                         # TODO：属于同一砾石，重组
                         # FIXME:找到第now_img_id - 1 张中第n个砾石在ALL_ROCKS_LIST中的位置
-                        pre_index = PRE_IMG_ROCK_ID[n-1]
-                        ALL_ROCKS_LIST[pre_index - 1]['contours'].append(self.contours_list[now_img_id - 1][m - 1])
-                        ALL_ROCKS_LIST[pre_index - 1]['z_coordinates'].append(now_img_id - 1)
-                        PRE_IMG_ROCK_ID[m - 1] = pre_index   # 当前图像的第m个边界属于的砾石id
+                        # !BUG:
+                        pre_id = PRE_IMG_ROCK_ID[n-1]
+                        ALL_ROCKS_LIST[pre_id - 1]['contours'].append(self.contours_list[now_img_id - 1][m - 1])
+                        ALL_ROCKS_LIST[pre_id - 1]['z_coordinates'].append(now_img_id - 1)
+                        NOW_IMG_ROCK_ID.append(pre_id)   # 当前图像的第m个边界属于的砾石id
                         #K-=1  # 属于同一砾石不需要K+1，但是为了避免后续K+=1时特殊处理，在这里先K-1
                         #isAddRock = False
                         break
@@ -196,7 +200,6 @@ class VisualModelWidget(QDialog):
                 # while(n <= N)上一张图像的所有砾石已经找完，说明当前这张图像的剩余边界矩阵（若有）均为新砾石
                 if n > N:   # 用于解决是因为n>N还是因为找到两个边界属于同一个砾石而结束循环
                     # isAddRock = True
-                
                     K+=1  # 找到新砾石
                     # TODO:添加新砾石K
                     rock_dict = {}
@@ -206,11 +209,13 @@ class VisualModelWidget(QDialog):
                     rock_dict['z_coordinates'] = []
                     rock_dict['z_coordinates'].append(now_img_id - 1)
                     ALL_ROCKS_LIST.append(rock_dict)
-                    PRE_IMG_ROCK_ID[m - 1] = K  # 
+                    NOW_IMG_ROCK_ID.append(K)  # 
                 m+=1  # 处理当前图像的下一个边界
                 #
             now_img_id+=1  # while(m <= M)  #  当前图像的砾石已经找完，处理下一张
-
+            PRE_IMG_ROCK_ID = NOW_IMG_ROCK_ID
+            NOW_IMG_ROCK_ID = []
+            
         print("Successful!")  # while(now_img_id <= total_img_num):
         global ALL_ROCKS_COORDINATES
         ALL_ROCKS_COORDINATES = []
@@ -376,13 +381,13 @@ def is_central_points_on_polygons(contour,central_points):
     # cv2.pointPolygonTest只接受元组
     central_points_1_xy     = (central_points[0][0],central_points[0][1])
     central_points_2_xy     = (central_points[1][0],central_points[1][1])
-    distance_point1             = cv2.pointPolygonTest(contour,
-                                                   central_points_1_xy, True)
-    distance_point2             = cv2.pointPolygonTest(contour,
-                                                   central_points_2_xy, True)
-    if ((distance_point2 or distance_point1) >= 0) :      
+    flag_point1             = cv2.pointPolygonTest(contour,
+                                                   central_points_1_xy, False)
+    flag_point2             = cv2.pointPolygonTest(contour,
+                                                   central_points_2_xy, False)
+    if flag_point1 >= 0:
         return True
-    elif (-10 <= (distance_point1 and distance_point2) < 0 ):
+    elif flag_point2 >= 0:
         return True
     else:
         return False
@@ -414,3 +419,68 @@ def IsSameRock(m,n,now_img_id,contours_list,central_points_list):
         flag    = is_central_points_on_polygons(contours_list[now_img_id - 2][n - 1],
                                                 central_points_list[now_img_id - 1][m - 1])
     return flag      
+
+
+def IsSameRock_2(m,n,now_img_id,contours_list,central_points_list):
+    """
+    两边界矩阵属于同一个砾石，给予相同的砾石编号
+    """
+    max_id      = compare_area(contours_list,m,n,now_img_id)
+    if max_id   == "m":
+        xq = [central_points_list[now_img_id - 2][n - 1][0][0],
+              central_points_list[now_img_id - 2][n - 1][0][1]]
+        yq = [central_points_list[now_img_id - 2][n - 1][1][0],
+              central_points_list[now_img_id - 2][n - 1][1][1]]
+        xv = []
+        yv = []
+        for i in range(len(contours_list[now_img_id - 1][m - 1])):
+            xv.append(contours_list[now_img_id - 1][m - 1][i][0][0])
+            yv.append(contours_list[now_img_id - 1][m - 1][i][0][1])
+        xq = np.array(xq)
+        yq = np.array(yq)
+        xv = np.array(xv)
+        yv = np.array(yv)
+        flag,_     = inpolygon(xq,yq,xv,yv)
+    else:
+        xq = [central_points_list[now_img_id - 1][m - 1][0][0],
+              central_points_list[now_img_id - 1][m - 1][0][1]]
+        yq = [central_points_list[now_img_id - 1][m - 1][1][0],
+              central_points_list[now_img_id - 1][m - 1][1][1]]
+        xv = []
+        yv = []
+        for i in range(len(contours_list[now_img_id - 2][n - 1])):
+            xv.append(contours_list[now_img_id - 2][n - 1][i][0][0])
+            yv.append(contours_list[now_img_id - 2][n - 1][i][0][1])
+        xq = np.array(xq)
+        yq = np.array(yq)
+        xv = np.array(xv)
+        yv = np.array(yv)
+        flag,_    = inpolygon(xq,yq,xv,yv)
+    if (flag[0] or flag[1]) == True:
+        return True
+    else:
+        return False
+
+
+def inpolygon(xq, yq, xv, yv):
+    """
+    reimplement inpolygon in matlab
+    :type xq: np.ndarray
+    :type yq: np.ndarray
+    :type xv: np.ndarray
+    :type yv: np.ndarray
+    """
+    # 合并xv和yv为顶点数组
+    vertices = np.vstack((xv, yv)).T
+    # 定义Path对象
+    path = Path(vertices)
+    # 把xq和yq合并为test_points
+    test_points = np.hstack([xq.reshape(xq.size, -1), yq.reshape(yq.size, -1)])
+    # 得到一个test_points是否严格在path内的mask，是bool值数组
+    _in = path.contains_points(test_points)
+    # 得到一个test_points是否在path内部或者在路径上的mask
+    _in_on = path.contains_points(test_points, radius=10)
+    # 得到一个test_points是否在path路径上的mask
+    _on = _in ^ _in_on
+    
+    return _in_on, _on

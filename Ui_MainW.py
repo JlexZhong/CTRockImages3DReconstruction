@@ -83,6 +83,10 @@ class Ui_MainWindow(object):
         self.pushButton_openfile_seged.setObjectName(
             "pushButton_openfile_seged")
         self.verticalLayout.addWidget(self.pushButton_openfile_seged)
+        self.pushButton_clear_stackedsidget = QtWidgets.QPushButton(self.widget_tools)
+        self.pushButton_clear_stackedsidget.setObjectName("pushButton_clear_stackedsidget")
+        self.pushButton_clear_stackedsidget.setText("清空窗口")
+        self.verticalLayout.addWidget(self.pushButton_clear_stackedsidget)
         self.Button_pre_img = QtWidgets.QPushButton(self.widget_tools)
         self.Button_pre_img.setObjectName("Button_pre_img")
         self.verticalLayout.addWidget(self.Button_pre_img)
@@ -180,6 +184,8 @@ class Ui_MainWindow(object):
         self.label_weight_path.setText(_translate("MainWindow", "权重路径："))
         self.action.setText(_translate("MainWindow", "导入原始CT切片"))
 
+
+
     def SetAction(self, MainWindow):
         """为控件添加功能"""
         self.pushButton_openfile.clicked.connect(
@@ -197,8 +203,21 @@ class Ui_MainWindow(object):
             lambda: self.Action_VisualModel(MainWindow))
         self.spinBox_pensize.valueChanged.connect(self.Action_ChangedPenSize)
         self.Button_resetnow.clicked.connect(self.Action_ResetImage)
+        self.pushButton_clear_stackedsidget.clicked.connect(self.Action_clear_stackedwidget)
+
+      
+      
+    def Action_clear_stackedwidget(self):
+        """清空当前的窗口"""
+        total_num = self.stackedWidget.count()
+        for i in range(total_num - 1,-1,-1):  # 倒序循环
+            page_widget = self.stackedWidget.widget(i)
+            self.stackedWidget.removeWidget(page_widget)
+            # page_widget.deleteLater() 
         
-        
+        # self.stackedWidget.setCurrentIndex(0) 
+        self.stackedWidget.update()
+    
     def Open_File_Pre(self, MainWindow):
         """
         打开文件对话框
@@ -229,10 +248,13 @@ class Ui_MainWindow(object):
 
             # 清空当前全部窗口
             # TODO  删除page的索引问题
-            print(self.stackedWidget.count())
-            for i in range(self.stackedWidget.count() - 1):
+            total_num = self.stackedWidget.count()
+            for i in range(total_num - 1,-1,-1): # 倒序循环
                 page_widget = self.stackedWidget.widget(i)
                 self.stackedWidget.removeWidget(page_widget)
+            self.stackedWidget.update()
+    
+
             # 构建窗体，并显示图像
             for i in range(len(self.absolute_FileList_pre)):
                 page_widget = QtWidgets.QWidget()
@@ -243,7 +265,6 @@ class Ui_MainWindow(object):
                 pix = QtGui.QPixmap(self.absolute_FileList_pre[i])
                 label_pre_img.setPixmap(pix)
                 label_pre_img.setScaledContents(False)  # 自适应QLabel大小
-
                 page_layout.addWidget(label_pre_img)
 
                 self.stackedWidget.addWidget(page_widget)
