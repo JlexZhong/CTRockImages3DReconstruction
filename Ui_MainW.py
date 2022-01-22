@@ -9,17 +9,16 @@
 
 
 import os
-from PIL import Image, ImageQt
+from PIL import Image
 from PyQt5 import QtCore, QtGui, QtWidgets
 from tqdm import trange
-
 from palette import ReviseForm
 from nets.inference_unet import UNET
-from VisualModel import VisualModelWidget
-
+from reconstruction.VisualModel import VisualModelWidget
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
+        self.MainWindow = MainWindow
         self.absolute_FileList_seged = None
         self.absolute_FileList_pre = None
         MainWindow.resize(1400, 800)
@@ -134,11 +133,6 @@ class Ui_MainWindow(object):
         self.pushButton_save_imgs = QtWidgets.QPushButton(self.widget_tools)
         self.pushButton_save_imgs.setObjectName("pushButton_save_imgs")
         self.verticalLayout.addWidget(self.pushButton_save_imgs)
-        self.pushButton_save_vtk_files = QtWidgets.QPushButton(
-            self.widget_tools)
-        self.pushButton_save_vtk_files.setObjectName(
-            "pushButton_save_vtk_files")
-        self.verticalLayout.addWidget(self.pushButton_save_vtk_files)
         self.pushButton_3D_build = QtWidgets.QPushButton(self.widget_tools)
         self.pushButton_3D_build.setObjectName("pushButton_3D_build")
         self.verticalLayout.addWidget(self.pushButton_3D_build)
@@ -178,8 +172,6 @@ class Ui_MainWindow(object):
         self.label_pensize.setText(_translate("MainWindow", "画笔粗细"))
         self.label_pencolor.setText(_translate("MainWindow", "画笔颜色"))
         self.pushButton_save_imgs.setText(_translate("MainWindow", "保存全部图片"))
-        self.pushButton_save_vtk_files.setText(
-            _translate("MainWindow", "输出VTK文件"))
         self.pushButton_3D_build.setText(_translate("MainWindow", "三维重建"))
         self.label_weight_path.setText(_translate("MainWindow", "权重路径："))
         self.action.setText(_translate("MainWindow", "导入原始CT切片"))

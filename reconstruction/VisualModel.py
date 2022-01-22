@@ -1,20 +1,21 @@
-from ast import Return
 import math
-import sys
 import random
 import cv2
 import numpy as np
 import pyqtgraph.opengl as gl
-from pandas import array
 from PIL import ImageQt
 from PyQt5.QtWidgets import *
-from pyqtgraph.Qt import QtCore, QtGui
-from PyQt5.QtGui import QStandardItemModel, QStandardItem, QCursor, QIcon
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from palette import ReviseForm
 from PyQt5.QtCore import Qt
 from matplotlib.path import Path
+import os
+from output_vtk_file import VtkPointCloud
+import vtk
+
 
 class VisualModelWidget(QDialog):
+    """三维重建窗口类"""
     def __init__(self, parent, MainUi):
         super(VisualModelWidget, self).__init__(parent)
         self.parent = parent
@@ -22,8 +23,11 @@ class VisualModelWidget(QDialog):
         self.setWindowTitle("三维砾石重建")
         self.resize(1000, 800)
         # 显示点云的组件
+        
         self.w = gl.GLViewWidget(self)
         self.w.opts['distance'] = 130  # 视图距离
+        
+        
         # 右侧ID框
         self.Widget_ID = QWidget(self)
         self.Widget_ID.setMaximumWidth(200)
@@ -42,16 +46,24 @@ class VisualModelWidget(QDialog):
         self.pushbutton_all_unselect.setText("全不选")
         self.pushbutton_3D_Modeling = QPushButton(self.Widget_ID)
         self.pushbutton_3D_Modeling.setText("三维重建")
+        self.pushbutton_save_to_txt = QPushButton(self.Widget_ID)
+        self.pushbutton_save_to_txt.setText("输出为txt文件")
+        self.pushbutton_save_to_vtk = QPushButton(self.Widget_ID)
+        self.pushbutton_save_to_vtk.setText("输出为vtk文件")
         self.Layout_ID.addWidget(self.View_ID)
         self.Layout_ID.addWidget(self.pushbutton_all_select)
         self.Layout_ID.addWidget(self.pushbutton_all_unselect)
         self.Layout_ID.addWidget(self.pushbutton_3D_Modeling)
+        self.Layout_ID.addWidget(self.pushbutton_save_to_txt)
+        self.Layout_ID.addWidget(self.pushbutton_save_to_vtk)
         # View_ID
         self.View_ID.setEditTriggers(QAbstractItemView.NoEditTriggers)
         # add action
         self.pushbutton_all_select.clicked.connect(self.Action_all_select)
         self.pushbutton_all_unselect.clicked.connect(self.Action_all_unselect)
         self.pushbutton_3D_Modeling.clicked.connect(self.Action_Visual_in_Dialog)
+        self.pushbutton_save_to_txt.clicked.connect(self.Action_save_coordinates_to_txt)
+        self.pushbutton_save_to_vtk.clicked.connect(self.Action_output_to_vtk)
 
     def createModel(self, parent):
         """
@@ -232,8 +244,92 @@ class VisualModelWidget(QDialog):
             ALL_ROCKS_COORDINATES.append(contours)
         self.scatter_plot()
         
-    def scatter_plot(self):
+    def Action_save_coordinates_to_txt(self):
+        """保存坐标为txt"""
+        folderDir_save = None
+        folderDir_save = QFileDialog.getExistingDirectory(
+            self, '选取文件夹', "./")  # 打开文件夹选择对话框
+        if folderDir_save == "":
+            pass  # 防止未选择文件或者关闭对话框程序闪退
+        else:
+            list_selected_ID = self.Get_select_ids()
+            x = []
+            y = []
+            z = []
+            colors = []
+            for id in list_selected_ID:
+                i = id -1
+                color = get_random_color()
+                for j in range(len(ALL_ROCKS_COORDINATES[i][0])):
+                    x.append(ALL_ROCKS_COORDINATES[i][0][j])
+                    y.append(ALL_ROCKS_COORDINATES[i][1][j])
+                    z.append(ALL_ROCKS_COORDINATES[i][2][j])
+                    colors.append(color)
+                
+                pos = np.empty((len(x), 3))
+                for i in range(len(x)):
+                    pos[i] = (x[i], y[i], z[i])
+                pos = np.array(pos)
+                np.savetxt(folderDir_save + '/' + 'rock_' + str(id) + '.txt',pos,'%.2d')  # 保存为txt，'%.2d'为精度
         
+    def Action_output_to_vtk(self):
+        """输出为VTK"""
+        vtkFileSavePath = None
+        vtkFileSavePath = QFileDialog.getSaveFileName(self, '保存vtk文件', "./",'.vtk')  # 打开文件夹选择对话框
+        if vtkFileSavePath == "":
+            pass  # 防止未选择文件或者关闭对话框程序闪退
+        else:
+            list_selected_ID = self.Get_select_ids()
+            pointCloud = VtkPointCloud(list_selected_ID[0],list_selected_ID[len(list_selected_ID) - 1])
+            x = []
+            y = []
+            z = []
+            for id in list_selected_ID:
+                i = id -1
+                for j in range(len(ALL_ROCKS_COORDINATES[i][0])):
+                    x.append(ALL_ROCKS_COORDINATES[i][0][j])
+                    y.append(ALL_ROCKS_COORDINATES[i][1][j])
+                    z.append(ALL_ROCKS_COORDINATES[i][2][j])
+                
+                self.MainUi.statusbar.showMessage("输出vtk:" + str(id) + "/" + str(len(list_selected_ID)))
+                for k in range(len(x)):
+                    pos = (x[k], y[k], z[k])
+                    pointCloud.addPoint(pos,id)
+            # ++++++++++++++++++  writer保存文件 +++++++++++++++++++
+            writer = vtk.vtkPolyDataWriter()
+            
+            # !若在保存文件对话框中没写.vtk后缀，则加上vtk后缀（即vtkFileSavePath[1]）
+            if vtkFileSavePath[0][-4:] != '.vtk':
+                writer.SetFileName(os.path.join((vtkFileSavePath[0] + vtkFileSavePath[1])))
+            else:
+                writer.SetFileName(os.path.join(vtkFileSavePath[0]))
+            writer.SetInputData(pointCloud.vtkPolyData)
+            writer.Write()
+            writer.Update()    
+            
+            """
+            # !加上这一段即可显示出vtk窗口
+            # Renderer
+            renderer = vtk.vtkRenderer()
+            renderer.AddActor(pointCloud.vtkActor)
+            renderer.SetBackground(.2, .3, .4)
+            renderer.ResetCamera()
+
+            # Render Window
+            renderWindow = vtk.vtkRenderWindow()
+            renderWindow.AddRenderer(renderer)
+
+            # Interactor
+            renderWindowInteractor = vtk.vtkRenderWindowInteractor()
+            renderWindowInteractor.SetRenderWindow(renderWindow)
+
+            # Begin Interaction
+            renderWindow.Render()
+            renderWindowInteractor.Start()"""
+                
+        
+    def scatter_plot(self):
+        """利用Pyqtgraph画出三维点云图"""
         x = []
         y = []
         z = []
@@ -250,8 +346,9 @@ class VisualModelWidget(QDialog):
         for i in range(len(x)):
             self.pos[i] = (x[i], y[i], z[i])
         self.pos = np.array(self.pos)
+        
         colors = np.array(colors)
-        self.sp1 = gl.GLScatterPlotItem(pos=self.pos, color=colors, size=0.4, pxMode=False)
+        self.sp1 = gl.GLScatterPlotItem(pos=self.pos, color=colors, size=0.4, pxMode=True)
         self.w.addItem(self.sp1)
         # 显示坐标轴
         axex_x = gl.GLLinePlotItem(pos=np.asarray(

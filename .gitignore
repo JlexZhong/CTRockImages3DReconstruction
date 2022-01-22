@@ -136,3 +136,4 @@ __pycache__
 .idea
 git_ignore
 .qt_for_python
+output

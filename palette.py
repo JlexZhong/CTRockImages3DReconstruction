@@ -1,13 +1,7 @@
 # -*- coding: utf-8 -*-
-
-from PIL import Image, ImageQt
-import cv2
-import numpy as np
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QPixmap, QPen, QColor
 from PyQt5.QtCore import Qt, QPoint
-
 
 class ReviseForm(QWidget):
     """用于展示模型分割的结果和用画笔完善结果的类"""
