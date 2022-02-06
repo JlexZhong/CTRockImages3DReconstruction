@@ -156,7 +156,7 @@ class VisualModelWidget(QDialog):
             contours = extract_contour(self.imgs[i])
             contours = np.array(contours)
             self.contours_list.append(contours)
-            # 计算每个图像中的所有mask的假中心点
+        # 计算每个图像中的所有mask的假中心点
         central_points_list = []
         for i in range(len(self.contours_list)):
             central_points = calculate_central_points(self.contours_list[i])

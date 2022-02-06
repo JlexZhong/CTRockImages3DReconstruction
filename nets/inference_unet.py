@@ -19,7 +19,7 @@ from nets.unet import Unet as unet
 #--------------------------------------------#
 class UNET(object):
     _defaults = {
-        "model_path"        : 'weight/Epoch30-Train_Loss-0.0309-Val_Loss-0.0298 (1).pth',
+        "model_path"        : "../git_ignore/Epoch30-Train_Loss-0.0309-Val_Loss-0.0298 (1).pth",
         "model_image_size"  : (512, 512, 3),
         "num_classes"       : 2,  # bg+class
         "cuda"              : False,

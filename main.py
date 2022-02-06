@@ -8,9 +8,8 @@ cgitb.enable(format="text")
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
-    #app.setStyle("fusion")
+    app.setStyle("fusion")
     MainWindow = QtWidgets.QMainWindow()
-    
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow)
     MainWindow.setWindowTitle("基于深度学习的CT扫描砾石图像三维重建")
