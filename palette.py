@@ -58,6 +58,7 @@ class ReviseForm(QWidget):
 
     # 鼠标释放事件
     def mouseReleaseEvent(self, event):
+        """鼠标释放事件"""
         # 鼠标左键释放
         try:
             if event.button() == Qt.LeftButton:
@@ -69,6 +70,7 @@ class ReviseForm(QWidget):
             print("4")
 
     def paintEvent(self, event):
+        """绘画"""
         try:
             # print("绘画")
             pp = QPainter(self.pix)

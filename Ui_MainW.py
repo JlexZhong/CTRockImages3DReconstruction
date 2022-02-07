@@ -17,7 +17,13 @@ from nets.inference_unet import UNET
 from reconstruction.VisualModel import VisualModelWidget
 
 class Ui_MainWindow(object):
+    """主窗口类"""
     def setupUi(self, MainWindow):
+        """设置UI       
+
+        Args:
+            MainWindow : 主窗口对象
+        """
         self.MainWindow = MainWindow
         self.absolute_FileList_seged = None
         self.absolute_FileList_pre = None
@@ -154,6 +160,7 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
+        """设置文本"""
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.label_now_img_id.setText(_translate("MainWindow", "当前切片："))
@@ -214,7 +221,6 @@ class Ui_MainWindow(object):
         """
         打开文件对话框
 
-        :return:
         """
         folderDir_pre = None
         folderDir_pre = QtWidgets.QFileDialog.getExistingDirectory(
@@ -443,16 +449,19 @@ class Ui_MainWindow(object):
 
 # 继承QThread
 class Runthread(QtCore.QThread):
+    """自定义线程类"""
     # python3,pyqt5与之前的版本有些不一样
     #  通过类成员对象定义信号对象
     _signal = QtCore.pyqtSignal(str)
 
     def __init__(self):
+        """构造函数"""
         super(Runthread, self).__init__()
 
     def __del__(self):
         self.wait()
 
     def run(self):
+        """运行线程"""
         print("开始分割")
         self._signal.emit("run 666")  # 信号发送

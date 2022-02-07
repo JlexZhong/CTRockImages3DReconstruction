@@ -18,6 +18,7 @@ from nets.unet import Unet as unet
 #   一定要注意训练时的model_path和num_classes数的修改
 #--------------------------------------------#
 class UNET(object):
+    """由于预测的UNET类"""
     _defaults = {
         "model_path"        : "../git_ignore/Epoch30-Train_Loss-0.0309-Val_Loss-0.0298 (1).pth",
         "model_image_size"  : (512, 512, 3),
@@ -41,6 +42,7 @@ class UNET(object):
     #   获得所有的分类
     #---------------------------------------------------#
     def generate(self):
+        """获得所有的分类"""
         self.net = unet(num_classes=self.num_classes, in_channels=self.model_image_size[-1]).eval()
 
         # state_dict = torch.load(self.model_path)  GPU
@@ -68,6 +70,7 @@ class UNET(object):
                     self.colors))
 
     def letterbox_image(self ,image, size):
+        """图像归一化"""
         image = image.convert("RGB")
         iw, ih = image.size
         w, h = size
@@ -83,6 +86,7 @@ class UNET(object):
     #   检测图片
     #---------------------------------------------------#
     def detect_image(self, image):
+        """检测图像"""
         #---------------------------------------------------------#
         #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
         #---------------------------------------------------------#
@@ -143,6 +147,7 @@ class UNET(object):
         return image,pr,seg_img
 
     def get_FPS(self, image, test_interval):
+        """检测视频"""
         orininal_h = np.array(image).shape[0]
         orininal_w = np.array(image).shape[1]
 

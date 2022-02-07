@@ -13,10 +13,13 @@ import os
 from output_vtk_file import VtkPointCloud
 import vtk
 
+"""定义三维重建窗口类和边界矩阵重组算法的相关函数"""
 
 class VisualModelWidget(QDialog):
-    """三维重建窗口类"""
+    """三维重建窗口类
+    """
     def __init__(self, parent, MainUi):
+        """构造函数"""
         super(VisualModelWidget, self).__init__(parent)
         self.parent = parent
         self.MainUi = MainUi
@@ -69,8 +72,9 @@ class VisualModelWidget(QDialog):
         """
 
         创建模型
-        :param parent:
-        :return:
+        
+        :param parent: 父组件
+        :return: 列表模型
         """
         model = QStandardItemModel(0, 3, parent)
         model.setHorizontalHeaderLabels(['', 'ID', '切片数'])
@@ -99,56 +103,19 @@ class VisualModelWidget(QDialog):
         
         
     def GetAllImages(self):
+        """获取图像修补区的经过修改后的所有图像
+        """
         self.imgs = []
         # 将pixmap 转换成Image
         for i in range(self.MainUi.stackedWidget.count()):
             self.imgs.append(ImageQt.fromqpixmap(self.MainUi.stackedWidget.widget(
                 i).findChild(ReviseForm, "ReviseForm"+str(i)).pix))
 
-    def Visual_(self):
-        # 计算每个图像的所有mask的边界矩阵
-        self.GetAllImages()
-        self.contours_list = []
-        for i in range(self.MainUi.stackedWidget.count()):
-            contours = extract_contour(self.imgs[i])
-            contours = np.array(contours)
-            self.contours_list.append(contours)
-        x = []
-        y = []
-        z = []
-
-        for i in range(len(self.contours_list)):
-            for j in range(len(self.contours_list[i])):
-                for k in range(len(self.contours_list[i][j])):
-                    # -256 是因为图片像素坐标是以左上角为原点
-                    x.append((self.contours_list[i][j][k][0][0] - 256) * 0.25)
-                    y.append((self.contours_list[i][j][k][0][1] - 256) * 0.25)
-                    z.append(i * 0.70)
-
-        self.pos = np.empty((len(x), 3))
-        for i in range(len(x)):
-            self.pos[i] = (x[i], y[i], z[i])
-        self.pos = np.array(self.pos)
-
-        sp1 = gl.GLScatterPlotItem(pos=self.pos, color=(
-            1, 1, 1, 1), size=0.3, pxMode=False)
-        self.w.addItem(sp1)
-
-        # 显示坐标轴
-        axex_x = gl.GLLinePlotItem(pos=np.asarray(
-            [[0, 0, 0], [80, 0, 0]]), color=(1, 0, 0, 1), width=0.1)
-        axex_y = gl.GLLinePlotItem(pos=np.asarray(
-            [[0, 0, 0], [0, 80, 0]]), color=(0, 1, 0, 1), width=0.1)
-        axex_z = gl.GLLinePlotItem(pos=np.asarray(
-            [[0, 0, 0], [0, 0, 130]]), color=(0, 0, 1, 1), width=0.1)
-        self.w.addItem(axex_x)
-        self.w.addItem(axex_y)
-        self.w.addItem(axex_z)
-
-        self.w.show()
 
 
     def Visual(self):
+        """三维重建事件，核心操作
+        """
          # 计算每个图像的所有mask的边界矩阵
         self.GetAllImages()
         self.contours_list = []
@@ -414,13 +381,23 @@ class VisualModelWidget(QDialog):
 
 
 def get_random_color():
-    """获取一个随机的颜色"""
+    """获取一个随机的颜色
+
+    Returns:
+        List: RGBA
+    """
     #random.uniform(0, 100)
     r = lambda: random.uniform(0,1)
     return [r(),r(),r(),1]
 
 def extract_contour(r_img):
     """传入一个图像，返回该图像的所有mask的边界轮廓矩阵
+
+    Args:
+        r_img (PIL.Image): 分割后的图像
+
+    Returns:
+        [numpy.ndarray]: 边界轮廓矩阵
     """
     img = cv2.cvtColor(np.asarray(r_img),cv2.COLOR_RGB2BGR)
     
@@ -434,7 +411,10 @@ def calculate_two_central_points(contour_pixel_xy_list):
     """计算两个假中心点
 
     Args:
-        contour_pixel_xy_list (np.array): 一个目标的所有边界像素点坐标
+        contour_pixel_xy_list (numpy.ndarray): 一个目标的所有边界像素点坐标
+    
+    Returns:
+        numpy.ndarray: 两个假中心点
     """ 
     num_pixel           = len(contour_pixel_xy_list)
     # 获取四个点的坐标
@@ -461,6 +441,12 @@ def calculate_two_central_points(contour_pixel_xy_list):
 
 def calculate_central_points(contours):
     """传入一张图像的所有边界矩阵，，依次遍历目标然后调用calculate_central_points，返回该图像的所有假中心点的矩阵
+
+    Args:
+        contours (numpy.ndarray): 一张图像的所有边界矩阵
+
+    Returns:
+        numpy.ndarray: 返回所有假中心点
     """
     central_points          = []
     for i in range(len(contours)):
@@ -472,8 +458,14 @@ def calculate_central_points(contours):
 
 
 def is_central_points_on_polygons(contour,central_points):
-    """
-    判断两个假中心点是否在轮廓内
+    """判断两个假中心点是否在轮廓内
+
+    Args:
+        contour (numpy.ndarray): 边界矩阵
+        central_points (numpy.ndarray): 两个假中心点
+
+    Returns:
+        bool: 结果
     """
     # cv2.pointPolygonTest只接受元组
     central_points_1_xy     = (central_points[0][0],central_points[0][1])
@@ -490,8 +482,16 @@ def is_central_points_on_polygons(contour,central_points):
         return False
 
 def compare_area(contours_list,m,n,now_img_id):
-    """
-    计算两个边界矩阵面积的大小,返回较大值index
+    """计算两个边界矩阵面积的大小,返回较大值index
+
+    Args:
+        contours_list (List): 两个边界矩阵组成的列表
+        m (int): 当前图像的边界计数
+        n (int): 前一张图像的边界计数
+        now_img_id (int): 当前图像的id
+
+    Returns:
+        str: 返回面积较大的边界
     """
     area_m      = cv2.contourArea(contours_list[now_img_id - 1][m - 1])
     area_n      = cv2.contourArea(contours_list[now_img_id - 2][n - 1])
@@ -505,8 +505,17 @@ def compare_area(contours_list,m,n,now_img_id):
            
              
 def IsSameRock(m,n,now_img_id,contours_list,central_points_list):
-    """
-    两边界矩阵属于同一个砾石，给予相同的砾石编号
+    """两边界矩阵是否属于同一个砾石？
+
+    Args:
+        m (int): 当前图像的边界计数
+        n (int): 前一张图像的边界计数
+        now_img_id (int): 当前图像的id
+        contours_list (List): 所有边界矩阵
+        central_points_list (List): 所有假中心点
+
+    Returns:
+        bool: 判断结果
     """
     max_id      = compare_area(contours_list,m,n,now_img_id)
     if max_id   == "m":
@@ -562,6 +571,7 @@ def IsSameRock_2(m,n,now_img_id,contours_list,central_points_list):
 def inpolygon(xq, yq, xv, yv):
     """
     reimplement inpolygon in matlab
+    
     :type xq: np.ndarray
     :type yq: np.ndarray
     :type xv: np.ndarray

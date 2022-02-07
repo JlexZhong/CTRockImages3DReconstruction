@@ -4,6 +4,7 @@ from nets.vgg import VGG16
 
 
 class unetUp(nn.Module):
+    """上采样单元   """
     def __init__(self, in_size, out_size):
         super(unetUp, self).__init__()
         self.conv1 = nn.Conv2d(in_size, out_size, kernel_size=3, padding=1)
@@ -12,6 +13,7 @@ class unetUp(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, inputs1, inputs2):
+        """前向传播"""
         outputs = torch.cat([inputs1, self.up(inputs2)], 1)
         outputs = self.conv1(outputs)
         outputs = self.relu(outputs)
@@ -20,7 +22,15 @@ class unetUp(nn.Module):
         return outputs
 
 class Unet(nn.Module):
+    """改进UNet全卷积神经网络"""
     def __init__(self, num_classes=21, in_channels=3, pretrained=False):
+        """构造函数
+
+        Args:
+            num_classes (int, optional): 分类数. Defaults to 21.
+            in_channels (int, optional): 通道数. Defaults to 3.
+            pretrained (bool, optional): 是否载入预训练权重. Defaults to False.
+        """
         super(Unet, self).__init__()
         self.vgg = VGG16(pretrained=pretrained,in_channels=in_channels)
         in_filters = [192, 384, 768, 1024]
@@ -39,6 +49,14 @@ class Unet(nn.Module):
         self.final = nn.Conv2d(out_filters[0], num_classes, 1)
 
     def forward(self, inputs):
+        """前向传播
+
+        Args:
+            inputs (torch.tensor): 输入
+
+        Returns:
+            torch.tensor: 预测结果
+        """ 
         feat1 = self.vgg.features[  :4 ](inputs)
         feat2 = self.vgg.features[4 :9 ](feat1)
         feat3 = self.vgg.features[9 :16](feat2)
@@ -55,6 +73,7 @@ class Unet(nn.Module):
         return final
 
     def _initialize_weights(self, *stages):
+        """初始化权重"""
         for modules in stages:
             for module in modules.modules():
                 if isinstance(module, nn.Conv2d):

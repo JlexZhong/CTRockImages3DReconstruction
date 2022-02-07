@@ -9,6 +9,16 @@ from torch import nn
 
 
 def CE_Loss(inputs, target, num_classes=21):
+    """CE Loss 损失函数
+
+    Args:
+        inputs (torch.tensor): 网络预测值
+        target (torch.tensor): 目标值
+        num_classes (int, optional): 分类数. Defaults to 21.
+
+    Returns:
+        torch.tensor: 损失值
+    """ 
     n, c, h, w = inputs.size()
     nt, ht, wt = target.size()
     if h != ht and w != wt:
@@ -21,6 +31,17 @@ def CE_Loss(inputs, target, num_classes=21):
     return CE_loss
 
 def Dice_loss(inputs, target, beta=1, smooth = 1e-5):
+    """Dice Loss 损失函数
+
+    Args:
+        inputs (torch.tensor): 网络预测值
+        target (torch.tensor): 目标值
+        beta (int, optional): Defaults to 1.
+        smooth (float, optional):  Defaults to 1e-5.
+
+    Returns:
+        torch.tensor: 损失值
+    """
     n, c, h, w = inputs.size()
     nt, ht, wt, ct = target.size()
     
@@ -41,7 +62,13 @@ def Dice_loss(inputs, target, beta=1, smooth = 1e-5):
     return dice_loss
 
 class LossHistory():
+    """记录损失值的类"""
     def __init__(self, log_dir):
+        """构造函数
+
+        Args:
+            log_dir (str): 存放log的路径
+        """
         import datetime
         curr_time = datetime.datetime.now()
         time_str = datetime.datetime.strftime(curr_time,'%Y_%m_%d_%H_%M_%S')
@@ -54,6 +81,7 @@ class LossHistory():
         os.makedirs(self.save_path)
 
     def append_loss(self, loss, val_loss):
+        """添加损失值"""
         self.losses.append(loss)
         self.val_loss.append(val_loss)
         with open(os.path.join(self.save_path, "epoch_loss_" + str(self.time_str) + ".txt"), 'a') as f:
@@ -65,6 +93,7 @@ class LossHistory():
         self.loss_plot()
 
     def loss_plot(self):
+        """绘制损失变化图"""
         iters = range(len(self.losses))
 
         plt.figure()
@@ -89,6 +118,7 @@ class LossHistory():
         plt.savefig(os.path.join(self.save_path, "epoch_loss_" + str(self.time_str) + ".png"))
 
 def weights_init(net, init_type='normal', init_gain=0.02):
+    """权重初始化函数"""
     def init_func(m):
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and classname.find('Conv') != -1:

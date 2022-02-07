@@ -3,7 +3,14 @@ import torch.nn as nn
 from torchvision.models.utils import load_state_dict_from_url
 
 class VGG(nn.Module):
+    """vgg类，编码器使用vgg网络"""
     def __init__(self, features, num_classes=1000):
+        """构造函数
+
+        Args:
+            features (torch.tensor): 图像张量
+            num_classes (int, optional): 分类数. Defaults to 1000.
+        """ 
         super(VGG, self).__init__()
         self.features = features
         self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
@@ -19,6 +26,7 @@ class VGG(nn.Module):
         self._initialize_weights()
 
     def forward(self, x):
+        """前向传播 """
         x = self.features(x)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
@@ -26,6 +34,7 @@ class VGG(nn.Module):
         return x
 
     def _initialize_weights(self):
+        """初始化权重"""
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -40,6 +49,7 @@ class VGG(nn.Module):
 
 
 def make_layers(cfg, batch_norm=False, in_channels = 3):
+    """构造特征提取网络"""
     layers = []
     for v in cfg:
         if v == 'M':
@@ -60,6 +70,15 @@ cfgs = {
 
 
 def VGG16(pretrained, in_channels, **kwargs):
+    """构造VGG16网络，并载入预训练权重
+
+    Args:
+        pretrained (bool): 是否载入预训练权重
+        in_channels (int): 通道数
+
+    Returns:
+        torch.nn.model: VGG16网络模型对象
+    """
     model = VGG(make_layers(cfgs["D"], batch_norm = False, in_channels = in_channels), **kwargs)
     if pretrained:
         state_dict = load_state_dict_from_url("https://download.pytorch.org/models/vgg16-397923af.pth", model_dir="./model_data")

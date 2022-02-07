@@ -1,9 +1,10 @@
 import cgitb
 from PyQt5 import QtCore, QtGui, QtWidgets
 from Ui_MainW import Ui_MainWindow
-
 # 这句放在所有程序开始前，这样就可以正常打印异常了
 cgitb.enable(format="text")
+
+"""应用入口，运行此文件打开软件"""
 
 if __name__ == "__main__":
     import sys
